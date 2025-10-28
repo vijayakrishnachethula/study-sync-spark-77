@@ -33,15 +33,22 @@ app.use('/api', apiRoutes);
 // Connect DB and start server
 async function start() {
   try {
+    if (!MONGO_URI) {
+      console.log('[backend] MONGO_URI not set; starting with in-memory fallback');
+    } else {
+      console.log('[backend] Attempting MongoDB connection (dev)');
+    }
+
     // Attempt mongoose connection
     await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 1500,
+      // increase timeout slightly for developer machines
+      serverSelectionTimeoutMS: 8000,
     });
     // eslint-disable-next-line no-console
     console.log('[backend] Connected to MongoDB');
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.log('[backend] MongoDB not available, continuing with in-memory store');
+    console.error('[backend] MongoDB not available, continuing with in-memory store', err && err.message ? err.message : '');
   }
 
   // Skip TS-based startup seeding; GET /api/users will seed when empty
