@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { UserProfile } from '@/utils/mockProfiles';
+import axios from 'axios';
 import { ProTipsModal } from '@/components/ProTipsModal';
 import { TerminalModal } from '@/components/TerminalModal';
 import { useToast } from '@/hooks/use-toast';
@@ -59,7 +60,7 @@ const ProfileForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -80,8 +81,26 @@ const ProfileForm = () => {
       studyStyle: formData.studyStyle as UserProfile['studyStyle'],
     };
 
-    // Save to localStorage
+    // Save basic profile locally regardless of backend status
     localStorage.setItem('studysync-profile', JSON.stringify(userProfile));
+
+    try {
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${baseURL}/api/users`, {
+        id: undefined,
+        name: userProfile.name,
+        courses: userProfile.courses,
+        schedule: userProfile.schedule,
+        studyStyle: userProfile.studyStyle,
+      });
+      const savedId = res.data?.id;
+      if (savedId) {
+        localStorage.setItem('studysync-myId', String(savedId));
+        localStorage.setItem('studysync-profile', JSON.stringify({ ...userProfile, id: String(savedId) }));
+      }
+    } catch (err) {
+      console.log('Failed to save profile', err);
+    }
 
     // Show pro tips, then navigate
     setTimeout(() => {

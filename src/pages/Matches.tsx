@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserProfile, mockProfiles } from '@/utils/mockProfiles';
-import { findMatches, MatchScore } from '@/utils/matcher';
+import { UserProfile } from '@/utils/mockProfiles';
+import { MatchScore } from '@/utils/matcher';
+import axios from 'axios';
 import { MatchCard } from '@/components/MatchCard';
 import { ParticleBackground } from '@/components/ParticleBackground';
 import { CosmicLoader } from '@/components/CosmicLoader';
@@ -16,28 +17,51 @@ const Matches = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load user profile from localStorage
-    const storedProfile = localStorage.getItem('studysync-profile');
-    
-    if (!storedProfile) {
-      navigate('/');
-      return;
-    }
+    const run = async () => {
+      const storedProfile = localStorage.getItem('studysync-profile');
+      if (!storedProfile) {
+        navigate('/');
+        return;
+      }
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      let myIdStr = localStorage.getItem('studysync-myId');
+      const profile: UserProfile = JSON.parse(storedProfile);
+      setUserProfile(profile);
 
-    const profile: UserProfile = JSON.parse(storedProfile);
-    setUserProfile(profile);
+      // If we don't have an id yet (e.g., profile saved before backend was added), create it now
+      if (!myIdStr) {
+        try {
+          const res = await axios.post(`${baseURL}/api/users`, {
+            name: profile.name,
+            courses: profile.courses,
+            schedule: profile.schedule,
+            studyStyle: profile.studyStyle,
+          });
+          const savedId = res.data?.id;
+          if (savedId) {
+            myIdStr = String(savedId);
+            localStorage.setItem('studysync-myId', myIdStr);
+            localStorage.setItem('studysync-profile', JSON.stringify({ ...profile, id: myIdStr }));
+          }
+        } catch (e) {
+          console.log('Failed to create user for matches', e);
+          setLoading(false);
+          return;
+        }
+      }
 
-    // Calculate matches
-    setTimeout(() => {
-      const matchScores = findMatches(profile, mockProfiles);
-      const matchedProfiles = matchScores.map(score => ({
-        profile: mockProfiles.find(p => p.id === score.userId)!,
-        score
-      }));
+      try {
+        const res = await axios.get(`${baseURL}/api/matches`, { params: { myId: myIdStr } });
+        const data = res.data as Array<{ profile: UserProfile; score: MatchScore }>;
+        setMatches(data);
+      } catch (err) {
+        console.log('Failed to fetch matches', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setMatches(matchedProfiles);
-      setLoading(false);
-    }, 1000);
+    run();
   }, [navigate]);
 
   if (loading) {
