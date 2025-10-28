@@ -16,8 +16,10 @@ export const Navbar = () => {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
           <motion.div
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 0.6 }}
+            initial={{ skewY: -15 }}
+            animate={{ skewY: 0 }}
+            transition={{ duration: 0.6, type: 'spring' }}
+            whileHover={{ rotate: 360, skewY: 15 }}
           >
             <FaBook className="text-2xl text-primary" />
           </motion.div>
@@ -50,15 +52,25 @@ export const Navbar = () => {
 
           <motion.button
             whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
             onClick={toggleTheme}
             className="p-2 rounded-lg bg-muted hover:bg-accent transition-colors"
             aria-label="Toggle theme"
           >
-            {theme === 'light' ? (
-              <FaMoon className="text-lg text-primary" />
-            ) : (
-              <FaSun className="text-lg text-secondary" />
-            )}
+            <motion.div
+              key={theme}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {theme === 'light' ? (
+                <FaMoon className="text-lg text-primary" />
+              ) : (
+                <FaSun className="text-lg text-secondary" />
+              )}
+            </motion.div>
           </motion.button>
         </div>
       </div>

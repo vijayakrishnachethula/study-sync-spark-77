@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile, mockProfiles } from '@/utils/mockProfiles';
 import { findMatches, MatchScore } from '@/utils/matcher';
 import { MatchCard } from '@/components/MatchCard';
+import { ParticleBackground } from '@/components/ParticleBackground';
+import { CosmicLoader } from '@/components/CosmicLoader';
 import { Button } from '@/components/ui/button';
 import { FaArrowLeft, FaTrophy } from 'react-icons/fa';
 
@@ -39,31 +41,15 @@ const Matches = () => {
   }, [navigate]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="inline-block mb-4"
-          >
-            <FaTrophy className="text-6xl gradient-primary bg-clip-text" style={{ WebkitTextFillColor: 'transparent' }} />
-          </motion.div>
-          <h2 className="text-2xl font-bold text-foreground">Finding Your Perfect Matches...</h2>
-          <p className="text-muted-foreground mt-2">Analyzing compatibility factors</p>
-        </motion.div>
-      </div>
-    );
+    return <CosmicLoader />;
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4">
-      <div className="container mx-auto max-w-7xl">
+    <div className="min-h-screen pt-24 pb-12 px-4 relative">
+      {/* Constellation Background */}
+      <ParticleBackground />
+      
+      <div className="container mx-auto max-w-7xl relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

@@ -1,73 +1,169 @@
-# Welcome to your Lovable project
+# StudySync Matcher 🎓✨
 
-## Project info
+A unique CS student study group matching app with immersive, animated UX inspired by cosmic coding themes. Built with React, TypeScript, Framer Motion, and Chart.js.
 
-**URL**: https://lovable.dev/projects/4bce1db1-cda8-4884-ac48-60a80939cd4c
+## 🌟 Features
 
-## How can I edit this code?
+### Core Functionality
+- **Smart Matching Algorithm**: Matches students based on:
+  - 60% Course overlap
+  - 25% Schedule compatibility 
+  - 15% Study style alignment
+- **Interactive Profile Creation**: Beautiful animated form with validation
+- **Match Dashboard**: View top matches with detailed compatibility breakdowns
+- **Radar Charts**: Visualize match factors with interactive Chart.js graphs
 
-There are several ways of editing your application.
+### 🎨 Design & UX
+- **Cosmic Theme**: Blue (#4A90E2) to green (#7ED321) gradients
+- **Dark/Light Mode**: Persisted theme toggle with smooth transitions
+- **Particle Effects**: Constellation backgrounds with mouse-repel interactivity
+- **Fluid Animations**: Spring-based staggers, drags, hovers via Framer Motion
+- **Gamification**: 
+  - "Learner Orbs" for study style selection
+  - "Code Chips" for icebreaker quizzes
+  - Power Pair badges for 80%+ matches
+  - Confetti celebrations
 
-**Use Lovable**
+### 🐛 Easter Eggs
+- Type `debugme` in courses field to trigger terminal modal
+- CS fact tooltips on quiz hover
+- Particle sparks on card drag
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4bce1db1-cda8-4884-ac48-60a80939cd4c) and start prompting.
+### ♿ Accessibility
+- ARIA labels throughout
+- Keyboard navigation support
+- Reduced motion for mobile
+- Screen reader friendly
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚀 Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
+- Node.js 18+ and npm
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+\`\`\`bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd studysync-matcher
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
-```
+\`\`\`
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build for Production
 
-**Use GitHub Codespaces**
+\`\`\`bash
+npm run build
+\`\`\`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 📦 Tech Stack
 
-## What technologies are used for this project?
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Animations**: Framer Motion
+- **Charts**: Chart.js + react-chartjs-2
+- **Particles**: @tsparticles/react
+- **Icons**: React Icons
+- **UI Components**: shadcn/ui
+- **Routing**: React Router v6
 
-This project is built with:
+## 🏗️ Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+\`\`\`
+src/
+├── components/
+│   ├── ui/                 # shadcn UI components
+│   ├── Navbar.tsx          # Fixed navigation with theme toggle
+│   ├── MatchCard.tsx       # Draggable match cards with radar charts
+│   ├── RadarChart.tsx      # Interactive Chart.js radar visualization
+│   ├── ParticleBackground.tsx  # Constellation effect
+│   ├── CosmicLoader.tsx    # Rotating stars loader
+│   ├── ProTipsModal.tsx    # Study tips based on learning style
+│   ├── TerminalModal.tsx   # Easter egg terminal
+│   └── PowerPairBadge.tsx  # 80%+ match badge
+├── contexts/
+│   └── ThemeContext.tsx    # Dark/light mode provider
+├── pages/
+│   ├── ProfileForm.tsx     # Home page with form
+│   ├── Matches.tsx         # Match results page
+│   └── NotFound.tsx        # 404 page
+├── utils/
+│   ├── matcher.ts          # Core matching algorithm (O(n))
+│   └── mockProfiles.ts     # Sample user data
+├── App.tsx                 # Main app with routing
+└── index.css               # Global styles & design tokens
+\`\`\`
 
-## How can I deploy this project?
+## 🎯 Key Components
 
-Simply open [Lovable](https://lovable.dev/projects/4bce1db1-cda8-4884-ac48-60a80939cd4c) and click on Share -> Publish.
+### Matching Algorithm (`utils/matcher.ts`)
+\`\`\`typescript
+// Score breakdown (0-100):
+// - 60% Course overlap
+// - 25% Schedule compatibility (regex-based conflict detection)
+// - 15% Study style match (binary)
+\`\`\`
 
-## Can I connect a custom domain to my Lovable project?
+### Design System (`index.css`)
+- Semantic color tokens (HSL)
+- Custom gradients and shadows
+- Reusable animation keyframes
+- Dark/light mode support
 
-Yes, you can!
+## 🚢 Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Netlify (Recommended)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+1. Connect your GitHub repo to Netlify
+2. Set build command: `npm run build`
+3. Set publish directory: `dist`
+4. Deploy!
+
+### Manual Deploy
+
+\`\`\`bash
+npm run build
+# Upload dist/ folder to your hosting provider
+\`\`\`
+
+## 🔮 Future Enhancements
+
+- Backend integration with user authentication
+- Real-time chat between matches
+- Calendar integration for scheduling
+- Email notifications
+- Mobile app (PWA installable)
+- Advanced filtering options
+
+## 📝 Environment Variables
+
+For backend integration, create `.env`:
+
+\`\`\`
+VITE_API_URL=https://your-api-url.com
+\`\`\`
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or PR.
+
+## 📄 License
+
+MIT
+
+## 🙏 Acknowledgments
+
+- Built with [Lovable](https://lovable.dev)
+- UI components from [shadcn/ui](https://ui.shadcn.com)
+- Particles by [tsParticles](https://particles.js.org)
+
+---
+
+**Built with 💙 by StudySync Team**

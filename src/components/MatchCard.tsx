@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FaTrophy, FaBook, FaClock, FaBrain } from 'react-icons/fa';
+import { motion, PanInfo } from 'framer-motion';
+import { FaTrophy, FaBook, FaClock, FaBrain, FaQuestionCircle } from 'react-icons/fa';
 import { UserProfile } from '@/utils/mockProfiles';
 import { MatchScore } from '@/utils/matcher';
 import { RadarChart } from './RadarChart';
+import { PowerPairBadge } from './PowerPairBadge';
 import confetti from 'canvas-confetti';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -14,9 +15,18 @@ interface MatchCardProps {
   index: number;
 }
 
+const csFacts = [
+  "💡 Console.log tip: Use %o for objects!",
+  "🚀 Tip: Use debugger; for instant breakpoints",
+  "⚡ Pro tip: Array.reduce() is your friend",
+  "🎯 Did you know? Git bisect finds bugs fast",
+];
+
 export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
   const [quizAnswer, setQuizAnswer] = useState<string>('');
   const [connected, setConnected] = useState(false);
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'bg-secondary text-secondary-foreground';
@@ -37,6 +47,23 @@ export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
     }
   };
 
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    // Small confetti sparks on drop
+    if (Math.abs(info.offset.y) > 20) {
+      confetti({
+        particleCount: 20,
+        spread: 30,
+        origin: { x: info.point.x / window.innerWidth, y: info.point.y / window.innerHeight },
+        colors: ['#4A90E2', '#7ED321'],
+        startVelocity: 15,
+        ticks: 30,
+      });
+    }
+  };
+
+  const isPowerPair = matchScore.score >= 80;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -45,19 +72,26 @@ export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
         duration: 0.5, 
         delay: index * 0.1,
         type: 'spring',
-        bounce: 0.4
+        stiffness: 200,
+        damping: 15
       }}
       whileHover={{ 
-        scale: 1.03,
-        rotateY: 5,
+        scale: isDragging ? 1 : 1.02,
+        rotate: isDragging ? 0 : 1,
+        boxShadow: '0 20px 60px -10px rgba(74, 144, 226, 0.4)',
         transition: { duration: 0.2 }
       }}
       drag
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.2}
-      className="cursor-grab active:cursor-grabbing"
+      dragSnapToOrigin
+      onDragStart={() => setIsDragging(true)}
+      onDragEnd={handleDragEnd}
+      className="cursor-grab active:cursor-grabbing relative"
     >
-      <Card className="p-6 shadow-elegant hover:shadow-glow transition-all duration-300 bg-gradient-card">
+      {isPowerPair && <PowerPairBadge />}
+      
+      <Card className="p-6 shadow-elegant hover:shadow-glow transition-all duration-300 bg-gradient-card relative overflow-hidden">
         {/* Score Badge */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-bold text-foreground">{profile.name}</h3>
@@ -113,36 +147,67 @@ export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
           />
         </div>
 
-        {/* CS Icebreaker Quiz */}
+        {/* CS Icebreaker Quiz - Code Chips */}
         <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-          <p className="font-semibold mb-3 text-foreground">CS Icebreaker: What's your go-to debugging trick?</p>
+          <div className="flex items-center gap-2 mb-3">
+            <FaQuestionCircle className="text-primary" />
+            <p className="font-semibold text-foreground">CS Icebreaker: What's your go-to debugging trick?</p>
+          </div>
           <div className="space-y-2">
-            {['Console.log everything', 'Breakpoints & debugger', 'Ask AI for help'].map((option) => (
-              <label key={option} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="radio"
-                  name={`quiz-${profile.id}`}
-                  value={option}
-                  checked={quizAnswer === option}
-                  onChange={(e) => setQuizAnswer(e.target.value)}
-                  className="accent-primary"
-                />
-                <span className="text-sm group-hover:text-primary transition-colors">
-                  {option}
-                </span>
-              </label>
+            {['Console.log everything', 'Breakpoints & debugger', 'Ask AI for help'].map((option, idx) => (
+              <motion.label
+                key={option}
+                className="relative flex items-center gap-2 cursor-pointer group"
+                onHoverStart={() => setShowTooltip(option)}
+                onHoverEnd={() => setShowTooltip(null)}
+              >
+                <motion.div
+                  whileHover={{ rotateY: 180, scale: 1.05 }}
+                  transition={{ duration: 0.3 }}
+                  className={`
+                    flex-1 px-4 py-2 rounded-lg border-2 transition-all
+                    ${quizAnswer === option 
+                      ? 'border-secondary bg-secondary/20 shadow-glow' 
+                      : 'border-border hover:border-primary/50'
+                    }
+                  `}
+                >
+                  <input
+                    type="radio"
+                    name={`quiz-${profile.id}`}
+                    value={option}
+                    checked={quizAnswer === option}
+                    onChange={(e) => setQuizAnswer(e.target.value)}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">{option}</span>
+                </motion.div>
+                
+                {/* CS Fact Tooltip */}
+                {showTooltip === option && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute -top-12 left-0 right-0 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-xs z-10 shadow-lg"
+                  >
+                    {csFacts[idx]}
+                  </motion.div>
+                )}
+              </motion.label>
             ))}
           </div>
         </div>
 
         {/* Connect Button */}
-        <Button
-          onClick={handleConnect}
-          disabled={connected}
-          className="w-full gradient-primary text-white font-semibold"
-        >
-          {connected ? '✓ Connected!' : 'Connect'}
-        </Button>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Button
+            onClick={handleConnect}
+            disabled={connected}
+            className="w-full gradient-primary text-white font-semibold"
+          >
+            {connected ? '✓ Connected!' : 'Connect'}
+          </Button>
+        </motion.div>
       </Card>
     </motion.div>
   );
