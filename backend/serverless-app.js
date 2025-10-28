@@ -14,8 +14,8 @@ app.use(express.json());
 // Health for function root
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Mount routes under /api to keep frontend URLs unchanged
-app.use('/api', apiRoutes);
+// Mount routes at root; Vercel handler will strip leading /api
+app.use('/', apiRoutes);
 
 // Lazy Mongo connect on first request if not connected
 const MONGO_URI = process.env.MONGO_URI;
