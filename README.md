@@ -1,169 +1,83 @@
-# StudySync Matcher 🎓✨
+# StudySync Matcher
 
-A unique CS student study group matching app with immersive, animated UX inspired by cosmic coding themes. Built with React, TypeScript, Framer Motion, and Chart.js.
+Study partner matcher with React + Express + MongoDB (Atlas). Deployable on Netlify via Functions.
 
-## 🌟 Features
+## Features
 
-### Core Functionality
-- **Smart Matching Algorithm**: Matches students based on:
-  - 60% Course overlap
-  - 25% Schedule compatibility 
-  - 15% Study style alignment
-- **Interactive Profile Creation**: Beautiful animated form with validation
-- **Match Dashboard**: View top matches with detailed compatibility breakdowns
-- **Radar Charts**: Visualize match factors with interactive Chart.js graphs
+- Create a profile (name, courses, schedule, study style)
+- Top-5 matches scored by:
+  - 60% shared courses ratio
+  - 25% schedule non-overlap (HH:MM tokens)
+  - 15% same study style
+- MongoDB Atlas persistence with in-memory fallback for dev
 
-### 🎨 Design & UX
-- **Cosmic Theme**: Blue (#4A90E2) to green (#7ED321) gradients
-- **Dark/Light Mode**: Persisted theme toggle with smooth transitions
-- **Particle Effects**: Constellation backgrounds with mouse-repel interactivity
-- **Fluid Animations**: Spring-based staggers, drags, hovers via Framer Motion
-- **Gamification**: 
-  - "Learner Orbs" for study style selection
-  - "Code Chips" for icebreaker quizzes
-  - Power Pair badges for 80%+ matches
-  - Confetti celebrations
+## Local Development
 
-### 🐛 Easter Eggs
-- Type `debugme` in courses field to trigger terminal modal
-- CS fact tooltips on quiz hover
-- Particle sparks on card drag
+Frontend:
 
-### ♿ Accessibility
-- ARIA labels throughout
-- Keyboard navigation support
-- Reduced motion for mobile
-- Screen reader friendly
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ and npm
-
-### Installation
-
-\`\`\`bash
-# Clone the repository
-git clone <YOUR_GIT_URL>
-cd studysync-matcher
-
-# Install dependencies
-npm install
-
-# Start development server
+```
+npm i
 npm run dev
-\`\`\`
+```
 
-The app will be available at `http://localhost:8080`
+- Runs on the port printed by Vite (e.g., http://localhost:5173)
+- Root `.env`:
 
-### Build for Production
+```
+VITE_API_URL=http://localhost:5000
+```
 
-\`\`\`bash
-npm run build
-\`\`\`
+Backend:
 
-## 📦 Tech Stack
+```
+cd backend
+npm i
+npm run dev
+```
 
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Animations**: Framer Motion
-- **Charts**: Chart.js + react-chartjs-2
-- **Particles**: @tsparticles/react
-- **Icons**: React Icons
-- **UI Components**: shadcn/ui
-- **Routing**: React Router v6
+- Runs on http://localhost:5000
+- `backend/.env`:
 
-## 🏗️ Project Structure
+```
+MONGO_URI=mongodb+srv://<user>:<URL_ENCODED_PASSWORD>@<cluster>.mongodb.net/studysync?retryWrites=true&w=majority&appName=<app>
+PORT=5000
+```
 
-\`\`\`
-src/
-├── components/
-│   ├── ui/                 # shadcn UI components
-│   ├── Navbar.tsx          # Fixed navigation with theme toggle
-│   ├── MatchCard.tsx       # Draggable match cards with radar charts
-│   ├── RadarChart.tsx      # Interactive Chart.js radar visualization
-│   ├── ParticleBackground.tsx  # Constellation effect
-│   ├── CosmicLoader.tsx    # Rotating stars loader
-│   ├── ProTipsModal.tsx    # Study tips based on learning style
-│   ├── TerminalModal.tsx   # Easter egg terminal
-│   └── PowerPairBadge.tsx  # 80%+ match badge
-├── contexts/
-│   └── ThemeContext.tsx    # Dark/light mode provider
-├── pages/
-│   ├── ProfileForm.tsx     # Home page with form
-│   ├── Matches.tsx         # Match results page
-│   └── NotFound.tsx        # 404 page
-├── utils/
-│   ├── matcher.ts          # Core matching algorithm (O(n))
-│   └── mockProfiles.ts     # Sample user data
-├── App.tsx                 # Main app with routing
-└── index.css               # Global styles & design tokens
-\`\`\`
+- Health: `http://localhost:5000/health`
+- Users: `http://localhost:5000/api/users`
 
-## 🎯 Key Components
+## Netlify (Frontend + Functions)
 
-### Matching Algorithm (`utils/matcher.ts`)
-\`\`\`typescript
-// Score breakdown (0-100):
-// - 60% Course overlap
-// - 25% Schedule compatibility (regex-based conflict detection)
-// - 15% Study style match (binary)
-\`\`\`
+This repo includes a Netlify Function wrapping the Express app.
 
-### Design System (`index.css`)
-- Semantic color tokens (HSL)
-- Custom gradients and shadows
-- Reusable animation keyframes
-- Dark/light mode support
+Netlify settings:
 
-## 🚢 Deployment
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Functions directory: `netlify/functions`
+- Environment variables:
+  - `MONGO_URI` = your Atlas URI (password URL‑encoded)
+  - Option A: `VITE_API_URL=/.netlify/functions/api`
+  - Option B: keep frontend using `/api/*` (redirect provided in `netlify.toml`)
 
-### Netlify (Recommended)
+After deploy:
 
-1. Connect your GitHub repo to Netlify
-2. Set build command: `npm run build`
-3. Set publish directory: `dist`
-4. Deploy!
+- `/.netlify/functions/api/health` → `{ ok: true }`
+- `/api/users` → users list/seed
 
-### Manual Deploy
+## Project Structure
 
-\`\`\`bash
-npm run build
-# Upload dist/ folder to your hosting provider
-\`\`\`
+```
+backend/
+  models/, routes/, utils/
+  server.js            # local dev (Express listen)
+  serverless-app.js    # Netlify Functions export (no listen)
+netlify/functions/api.js  # serverless handler
+netlify.toml              # build + redirects
+src/ ...                  # frontend
+```
 
-## 🔮 Future Enhancements
+## Notes
 
-- Backend integration with user authentication
-- Real-time chat between matches
-- Calendar integration for scheduling
-- Email notifications
-- Mobile app (PWA installable)
-- Advanced filtering options
-
-## 📝 Environment Variables
-
-For backend integration, create `.env`:
-
-\`\`\`
-VITE_API_URL=https://your-api-url.com
-\`\`\`
-
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or PR.
-
-## 📄 License
-
-MIT
-
-## 🙏 Acknowledgments
-
-- Built with [Lovable](https://lovable.dev)
-- UI components from [shadcn/ui](https://ui.shadcn.com)
-- Particles by [tsParticles](https://particles.js.org)
-
----
-
-**Built with 💙 by StudySync Team**
+- Do not commit secrets; keep `backend/.env` local. Set `MONGO_URI` in Netlify.
+- If hosting backend elsewhere, set `VITE_API_URL` to that URL and add it to CORS in `backend/server.js`.
