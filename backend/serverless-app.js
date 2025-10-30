@@ -15,6 +15,39 @@ app.use(express.json());
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// Lazy connect to MongoDB (once per cold start)
+let dbConnecting = null;
+let lastConnectError = null;
+async function ensureDbConnected() {
+  if (mongoose.connection.readyState === 1) return; // connected
+  if (dbConnecting) return dbConnecting;            // in progress
+  const uri = process.env.MONGO_URI;
+  if (!uri) return; // allow memory fallback silently
+  dbConnecting = mongoose
+    .connect(uri, { dbName: (process.env.MONGO_DB || undefined) })
+    .then(() => {
+      // eslint-disable-next-line no-console
+      console.log('[serverless] MongoDB connected');
+      lastConnectError = null;
+    })
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.log('[serverless] MongoDB connect failed', err.message);
+      lastConnectError = String(err && err.message || err);
+    })
+    .finally(() => {
+      dbConnecting = null;
+    });
+  return dbConnecting;
+}
+
+// Attempt connection before handling ANY routes (including debug)
+app.use(async (_req, _res, next) => {
+  try { await ensureDbConnected(); } catch (_) {}
+  try { await ensureMongo(); } catch (_) {}
+  next();
+});
+
 // Mount routes under /api so that requests to /api/* map directly
 app.use('/api', apiRoutes);
 
@@ -26,16 +59,19 @@ app.use('/api', apiRoutes);
 app.get('/_debug/db', (req, res) => {
   const token = process.env.DEBUG_DB_TOKEN;
   const simpleGate = process.env.DEBUG_DB_ROUTE === 'true';
-
-  if (token) {
-    const provided = req.get('x-debug-token') || '';
-    if (provided !== token) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  } else if (!simpleGate) {
+  const headerToken = req.headers['x-debug-token'];
+  if (!(simpleGate || (token && headerToken && headerToken === token))) {
     return res.status(404).json({ ok: false, error: 'not found' });
   }
-
-  const state = mongoose.connection.readyState; // 0 disconnected, 1 connected, 2 connecting, 3 disconnecting
-  return res.json({ debug: true, readyState: state, connected: state === 1, lastError: lastMongoError });
+  const readyState = mongoose.connection.readyState;
+  res.json({
+    debug: true,
+    readyState,
+    connected: readyState === 1,
+    hasUri: !!process.env.MONGO_URI,
+    node: process.version,
+    lastError: lastConnectError
+  });
 });
 
 // Lazy Mongo connect on first request if not connected
