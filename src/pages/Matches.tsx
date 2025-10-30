@@ -120,6 +120,9 @@ const Matches = () => {
       }
     };
 
+    run();
+  }, [navigate]);
+
   const handleAccept = async (sessionId: number) => {
     try {
       const res = await fetch('/api/accept-session', {
@@ -195,9 +198,6 @@ const Matches = () => {
       toast.error(`Decline failed: ${e?.message || 'Unknown error'}`);
     }
   };
-
-    run();
-  }, [navigate]);
 
   const handlePropose = async (targetId: string | number) => {
     try {
