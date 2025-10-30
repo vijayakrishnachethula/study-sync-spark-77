@@ -13,6 +13,9 @@ function safeFrom() {
 }
 
 async function sendEmail(to, subject, html) {
+  if (process.env.EMAIL_ENABLED !== 'true') {
+    return { ok: true };
+  }
   if (!RESEND_API_KEY) {
     console.log('[connect-accept] RESEND_API_KEY missing, skipping email');
     return { ok: true };
@@ -105,7 +108,11 @@ export default async function handler(req, res) {
         </p>
       </div>
       `;
-      await sendEmail(recipients, '🎉 Connection Accepted on StudyNSync!', html);
+      try {
+        await sendEmail(recipients, '🎉 Connection Accepted on StudyNSync!', html);
+      } catch (e) {
+        console.log('[connect-accept] email error (ignored):', e?.message || e);
+      }
     }
 
     return res.status(302).setHeader('Location', '/?connected=1').end();
