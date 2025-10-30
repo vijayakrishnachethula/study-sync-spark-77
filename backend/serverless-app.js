@@ -15,6 +15,22 @@ app.use(express.json());
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// Rewrite helper: if request isn't to /health or /_debug/db and doesn't start with /api,
+// prefix /api so that redirects to 
+//   /.netlify/functions/api/:splat
+// become /api/:splat for our existing route definitions
+app.use((req, _res, next) => {
+  const p = req.url || '';
+  if (
+    p !== '/health' &&
+    !p.startsWith('/_debug/db') &&
+    !p.startsWith('/api')
+  ) {
+    req.url = `/api${p}`;
+  }
+  next();
+});
+
 // Mount routes at root; Vercel handler will strip leading /api
 app.use('/', apiRoutes);
 
