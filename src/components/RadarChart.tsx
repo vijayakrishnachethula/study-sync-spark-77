@@ -58,15 +58,20 @@ export const RadarChart = ({
         ticks: {
           stepSize: 15,
           backdropColor: 'transparent',
+          color: '#94a3b8',
         },
         grid: {
-          color: 'rgba(74, 144, 226, 0.1)',
+          color: 'rgba(148, 163, 184, 0.2)',
+        },
+        angleLines: {
+          color: 'rgba(148, 163, 184, 0.25)'
         },
         pointLabels: {
           font: {
             size: 12,
             weight: 'bold',
           },
+          color: '#e2e8f0',
         },
       },
     },

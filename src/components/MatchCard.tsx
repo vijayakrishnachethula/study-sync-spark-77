@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, PanInfo } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { FaTrophy, FaBook, FaClock, FaBrain, FaQuestionCircle } from 'react-icons/fa';
 import { UserProfile } from '@/utils/mockProfiles';
 import { MatchScore } from '@/utils/matcher';
@@ -16,18 +16,8 @@ interface MatchCardProps {
   onPropose?: (targetId: string | number) => void;
 }
 
-const csFacts = [
-  "💡 Console.log tip: Use %o for objects!",
-  "🚀 Tip: Use debugger; for instant breakpoints",
-  "⚡ Pro tip: Array.reduce() is your friend",
-  "🎯 Did you know? Git bisect finds bugs fast",
-];
-
 export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardProps) => {
-  const [quizAnswer, setQuizAnswer] = useState<string>('');
   const [connected, setConnected] = useState(false);
-  const [showTooltip, setShowTooltip] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'bg-secondary text-secondary-foreground';
@@ -48,21 +38,6 @@ export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardPr
     }
   };
 
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    setIsDragging(false);
-    // Small confetti sparks on drop
-    if (Math.abs(info.offset.y) > 20) {
-      confetti({
-        particleCount: 20,
-        spread: 30,
-        origin: { x: info.point.x / window.innerWidth, y: info.point.y / window.innerHeight },
-        colors: ['#4A90E2', '#7ED321'],
-        startVelocity: 15,
-        ticks: 30,
-      });
-    }
-  };
-
   const isPowerPair = matchScore.score >= 80;
 
   return (
@@ -76,19 +51,8 @@ export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardPr
         stiffness: 200,
         damping: 15
       }}
-      whileHover={{ 
-        scale: isDragging ? 1 : 1.02,
-        rotate: isDragging ? 0 : 1,
-        boxShadow: '0 20px 60px -10px rgba(74, 144, 226, 0.4)',
-        transition: { duration: 0.2 }
-      }}
-      drag
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      dragElastic={0.2}
-      dragSnapToOrigin
-      onDragStart={() => setIsDragging(true)}
-      onDragEnd={handleDragEnd}
-      className="cursor-grab active:cursor-grabbing relative"
+      whileHover={{ scale: 1.02, boxShadow: '0 20px 60px -10px rgba(74, 144, 226, 0.4)', transition: { duration: 0.2 } }}
+      className="cursor-default relative"
     >
       {isPowerPair && <PowerPairBadge />}
       
@@ -171,56 +135,7 @@ export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardPr
           />
         </div>
 
-        {/* CS Icebreaker Quiz - Code Chips */}
-        <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <FaQuestionCircle className="text-primary" />
-            <p className="font-semibold text-foreground">CS Icebreaker: What's your go-to debugging trick?</p>
-          </div>
-          <div className="space-y-2">
-            {['Console.log everything', 'Breakpoints & debugger', 'Ask AI for help'].map((option, idx) => (
-              <motion.label
-                key={option}
-                className="relative flex items-center gap-2 cursor-pointer group"
-                onHoverStart={() => setShowTooltip(option)}
-                onHoverEnd={() => setShowTooltip(null)}
-              >
-                <motion.div
-                  whileHover={{ rotateY: 180, scale: 1.05 }}
-                  transition={{ duration: 0.3 }}
-                  className={`
-                    flex-1 px-4 py-2 rounded-lg border-2 transition-all
-                    ${quizAnswer === option 
-                      ? 'border-secondary bg-secondary/20 shadow-glow' 
-                      : 'border-border hover:border-primary/50'
-                    }
-                  `}
-                >
-                  <input
-                    type="radio"
-                    name={`quiz-${profile.id}`}
-                    value={option}
-                    checked={quizAnswer === option}
-                    onChange={(e) => setQuizAnswer(e.target.value)}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-medium">{option}</span>
-                </motion.div>
-                
-                {/* CS Fact Tooltip */}
-                {showTooltip === option && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute -top-12 left-0 right-0 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-xs z-10 shadow-lg"
-                  >
-                    {csFacts[idx]}
-                  </motion.div>
-                )}
-              </motion.label>
-            ))}
-          </div>
-        </div>
+        {/* Removed CS Icebreaker for a cleaner UI */}
 
         {/* Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

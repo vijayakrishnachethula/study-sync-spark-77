@@ -16,6 +16,7 @@ const Matches = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [matches, setMatches] = useState<Array<{ profile: UserProfile; score: MatchScore }>>([]);
   const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<Array<{ id: number; from_user_id: number; start_at: string; end_at: string }>>([]);
 
   useEffect(() => {
     const run = async () => {
@@ -59,6 +60,16 @@ const Matches = () => {
           .map((c) => ({ profile: c, score: calculateMatch(me, c) })) as Array<{ profile: UserProfile; score: MatchScore }>;
 
         setMatches(scored.sort((a, b) => b.score.score - a.score.score).slice(0, 9));
+
+        // Fetch pending sessions where I'm the recipient
+        const { data: pend, error: pErr } = await supabase
+          .from('sessions')
+          .select('id, from_user_id, start_at, end_at, status')
+          .eq('to_user_id', meId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        if (pErr) throw pErr;
+        setPending((pend || []).map((s: any) => ({ id: s.id, from_user_id: s.from_user_id, start_at: s.start_at, end_at: s.end_at })));
       } catch (err) {
         console.log('Failed to fetch matches', err);
       } finally {
@@ -112,6 +123,26 @@ const Matches = () => {
       <ParticleBackground />
       
       <div className="container mx-auto max-w-7xl relative z-10">
+        {/* Pending Sessions */}
+        {pending.length > 0 && (
+          <div className="mb-8 p-4 border rounded-xl bg-card">
+            <h2 className="text-2xl font-semibold mb-3">Pending session requests</h2>
+            <div className="space-y-3">
+              {pending.map((s) => (
+                <div key={s.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg">
+                  <div className="text-sm">
+                    <div className="font-medium">From user #{s.from_user_id}</div>
+                    <div className="text-muted-foreground">{new Date(s.start_at).toLocaleString()} → {new Date(s.end_at).toLocaleString()}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => handleAccept(s.id)} className="bg-green-600 hover:bg-green-700 text-white">Accept</Button>
+                    <Button onClick={() => handleDecline(s.id)} variant="outline">Decline</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

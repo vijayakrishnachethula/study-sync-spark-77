@@ -60,6 +60,16 @@ const ProfileForm = () => {
       newErrors.studyStyle = 'Study style is required';
     }
 
+    // Require email for notifications
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required for notifications';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'Please enter a valid email address';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -261,7 +271,7 @@ const ProfileForm = () => {
               />
             </div>
             <div>
-              <Label htmlFor="email" className="text-sm font-medium">Email (optional)</Label>
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -270,6 +280,7 @@ const ProfileForm = () => {
                 placeholder="alex@example.com"
                 className="mt-2"
               />
+              {errors.email && <p className="text-destructive text-sm mt-1">{errors.email}</p>}
             </div>
             <div>
               <Label htmlFor="instagram" className="text-sm font-medium">Instagram (optional)</Label>
