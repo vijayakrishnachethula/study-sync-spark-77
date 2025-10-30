@@ -38,16 +38,24 @@ const Matches = () => {
           .select('id, name, courses, schedule, study_style, phone, email, instagram');
         if (error) throw error;
 
-        const users: UserProfile[] = (data || []).map((u: any) => ({
-          id: u.id,
-          name: u.name || `User ${u.id}`,
-          courses: u.courses || [],
-          schedule: u.schedule || '',
-          studyStyle: u.study_style || 'Visual',
-          phone: u.phone || undefined,
-          email: u.email || undefined,
-          instagram: u.instagram || undefined,
-        }));
+        const users: UserProfile[] = (data || []).map((u: any) => {
+          const rawCourses = u.courses;
+          const courses = Array.isArray(rawCourses)
+            ? rawCourses
+            : typeof rawCourses === 'string'
+              ? rawCourses.split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [];
+          return {
+            id: u.id,
+            name: u.name || `User ${u.id}`,
+            courses,
+            schedule: u.schedule || '',
+            studyStyle: u.study_style || 'Visual',
+            phone: u.phone || undefined,
+            email: u.email || undefined,
+            instagram: u.instagram || undefined,
+          } as UserProfile;
+        });
 
         const meId = Number(myIdStr);
         const me = users.find(u => Number(u.id) === meId);
