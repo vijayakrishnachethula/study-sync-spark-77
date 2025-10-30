@@ -11,8 +11,9 @@ const app = express();
 app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'], credentials: false }));
 app.use(express.json());
 
-// Health for function root
+// Health for function root (support both paths to handle different proxy setups)
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 // Mount routes at root; Vercel handler will strip leading /api
 app.use('/', apiRoutes);
