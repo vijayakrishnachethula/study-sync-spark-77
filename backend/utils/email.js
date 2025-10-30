@@ -13,7 +13,7 @@ async function sendEmail({ to, subject, text }) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'StudySync <noreply@studysync.local>',
+        from: process.env.RESEND_FROM || 'StudySync <onboarding@resend.dev>',
         to: Array.isArray(to) ? to : [to],
         subject,
         text,
