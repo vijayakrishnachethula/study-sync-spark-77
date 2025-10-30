@@ -20,125 +20,122 @@ const Matches = () => {
   const [pendingConns, setPendingConns] = useState<Array<{ id: number; from_user_id: number; from_name: string; accept_token: string }>>([]);
   const [connectedIds, setConnectedIds] = useState<Set<number>>(new Set());
   const [accepted, setAccepted] = useState<Array<{ id: number; other_user_id: number; start_at: string; end_at: string; note: any }>>([]);
+  const [myId, setMyId] = useState<number | null>(null);
+
+  const fetchData = async (meId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, courses, schedule, study_style, phone, email, instagram');
+      if (error) throw error;
+
+      const users: UserProfile[] = (data || []).map((u: any) => {
+        const rawCourses = u.courses;
+        const courses = Array.isArray(rawCourses)
+          ? rawCourses
+          : typeof rawCourses === 'string'
+            ? rawCourses.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : [];
+        return {
+          id: u.id,
+          name: u.name || `User ${u.id}`,
+          courses,
+          schedule: u.schedule || '',
+          studyStyle: u.study_style || 'Visual',
+          phone: u.phone || undefined,
+          email: u.email || undefined,
+          instagram: u.instagram || undefined,
+        } as UserProfile;
+      });
+
+      const me = users.find(u => Number(u.id) === meId);
+      if (!me) return;
+
+      const candidates = users.filter(u => Number(u.id) !== meId);
+      const scored = candidates.map((c) => ({ profile: c, score: calculateMatch(me, c) })) as Array<{ profile: UserProfile; score: MatchScore }>;
+      setMatches(scored.sort((a, b) => b.score.score - a.score.score).slice(0, 9));
+
+      const { data: pend, error: pErr } = await supabase
+        .from('sessions')
+        .select('id, from_user_id, start_at, end_at, status')
+        .eq('to_user_id', meId)
+        .eq('status', 'pending');
+      if (pErr) throw pErr;
+      setPending((pend || []).map((s: any) => ({ id: s.id, from_user_id: s.from_user_id, start_at: s.start_at, end_at: s.end_at })));
+
+      const { data: connsConnected, error: cErr } = await supabase
+        .from('connections')
+        .select('id, user_a_id, user_b_id, status')
+        .or(`user_a_id.eq.${meId},user_b_id.eq.${meId}`)
+        .eq('status', 'connected');
+      if (cErr) throw cErr;
+      const cSet = new Set<number>();
+      (connsConnected || []).forEach((c: any) => {
+        const other = c.user_a_id === meId ? c.user_b_id : c.user_a_id;
+        cSet.add(Number(other));
+      });
+      setConnectedIds(cSet);
+
+      const { data: connsPending, error: cpErr } = await supabase
+        .from('connections')
+        .select('id, user_a_id, accept_token')
+        .eq('user_b_id', meId)
+        .eq('status', 'pending');
+      if (cpErr) throw cpErr;
+      const fromIds = (connsPending || []).map((c: any) => c.user_a_id);
+      let nameById: Record<number, string> = {};
+      if (fromIds.length) {
+        const { data: fromUsers, error: fuErr } = await supabase
+          .from('users')
+          .select('id, name')
+          .in('id', fromIds);
+        if (fuErr) throw fuErr;
+        (fromUsers || []).forEach((u: any) => { nameById[Number(u.id)] = u.name || `User ${u.id}`; });
+      }
+      setPendingConns((connsPending || []).map((c: any) => ({ id: c.id, from_user_id: c.user_a_id, from_name: nameById[Number(c.user_a_id)] || `User ${c.user_a_id}` , accept_token: c.accept_token })));
+
+      const { data: acc, error: accErr } = await supabase
+        .from('sessions')
+        .select('id, from_user_id, to_user_id, start_at, end_at, status, note')
+        .or(`from_user_id.eq.${meId},to_user_id.eq.${meId}`)
+        .eq('status', 'accepted');
+      if (accErr) throw accErr;
+      const accMapped = (acc || []).map((s: any) => ({
+        id: s.id,
+        other_user_id: s.from_user_id === meId ? s.to_user_id : s.from_user_id,
+        start_at: s.start_at,
+        end_at: s.end_at,
+        note: s.note
+      }));
+      setAccepted(accMapped);
+    } catch (err) {
+      console.log('Failed to fetch data', err);
+    }
+  };
 
   useEffect(() => {
-    const run = async () => {
+    const init = async () => {
       try {
         const stored = localStorage.getItem('studysync-profile');
         const myProfile: UserProfile | null = stored ? JSON.parse(stored) : null;
         setUserProfile(myProfile);
-
         const myIdStr = localStorage.getItem('studysync-myId');
-        if (!myIdStr) {
-          setLoading(false);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, name, courses, schedule, study_style, phone, email, instagram');
-        if (error) throw error;
-
-        const users: UserProfile[] = (data || []).map((u: any) => {
-          const rawCourses = u.courses;
-          const courses = Array.isArray(rawCourses)
-            ? rawCourses
-            : typeof rawCourses === 'string'
-              ? rawCourses.split(',').map((s: string) => s.trim()).filter(Boolean)
-              : [];
-          return {
-            id: u.id,
-            name: u.name || `User ${u.id}`,
-            courses,
-            schedule: u.schedule || '',
-            studyStyle: u.study_style || 'Visual',
-            phone: u.phone || undefined,
-            email: u.email || undefined,
-            instagram: u.instagram || undefined,
-          } as UserProfile;
-        });
-
-        const meId = Number(myIdStr);
-        const me = users.find(u => Number(u.id) === meId);
-        if (!me) {
-          setLoading(false);
-          return;
-        }
-
-        const candidates = users.filter(u => Number(u.id) !== meId);
-        // Use existing matcher util
-        const scored = candidates
-          .map((c) => ({ profile: c, score: calculateMatch(me, c) })) as Array<{ profile: UserProfile; score: MatchScore }>;
-
-        setMatches(scored.sort((a, b) => b.score.score - a.score.score).slice(0, 9));
-
-        // Fetch pending sessions where I'm the recipient
-        const { data: pend, error: pErr } = await supabase
-          .from('sessions')
-          .select('id, from_user_id, start_at, end_at, status')
-          .eq('to_user_id', meId)
-          .eq('status', 'pending');
-        if (pErr) throw pErr;
-        setPending((pend || []).map((s: any) => ({ id: s.id, from_user_id: s.from_user_id, start_at: s.start_at, end_at: s.end_at })));
-
-        // Fetch connections to gate propose
-        // 1) Connected pairs involving me
-        const { data: connsConnected, error: cErr } = await supabase
-          .from('connections')
-          .select('id, user_a_id, user_b_id, status')
-          .or(`user_a_id.eq.${meId},user_b_id.eq.${meId}`)
-          .eq('status', 'connected');
-        if (cErr) throw cErr;
-        const cSet = new Set<number>();
-        (connsConnected || []).forEach((c: any) => {
-          const other = c.user_a_id === meId ? c.user_b_id : c.user_a_id;
-          cSet.add(Number(other));
-        });
-        setConnectedIds(cSet);
-
-        // 2) Pending incoming connection requests (to me)
-        const { data: connsPending, error: cpErr } = await supabase
-          .from('connections')
-          .select('id, user_a_id, accept_token')
-          .eq('user_b_id', meId)
-          .eq('status', 'pending');
-        if (cpErr) throw cpErr;
-        const fromIds = (connsPending || []).map((c: any) => c.user_a_id);
-        let nameById: Record<number, string> = {};
-        if (fromIds.length) {
-          const { data: fromUsers, error: fuErr } = await supabase
-            .from('users')
-            .select('id, name')
-            .in('id', fromIds);
-          if (fuErr) throw fuErr;
-          (fromUsers || []).forEach((u: any) => { nameById[Number(u.id)] = u.name || `User ${u.id}`; });
-        }
-        setPendingConns((connsPending || []).map((c: any) => ({ id: c.id, from_user_id: c.user_a_id, from_name: nameById[Number(c.user_a_id)] || `User ${c.user_a_id}` , accept_token: c.accept_token })));
-
-        // 3) Accepted sessions involving me (to display shared contacts post-acceptance)
-        const { data: acc, error: accErr } = await supabase
-          .from('sessions')
-          .select('id, from_user_id, to_user_id, start_at, end_at, status, note')
-          .or(`from_user_id.eq.${meId},to_user_id.eq.${meId}`)
-          .eq('status', 'accepted');
-        if (accErr) throw accErr;
-        const accMapped = (acc || []).map((s: any) => ({
-          id: s.id,
-          other_user_id: s.from_user_id === meId ? s.to_user_id : s.from_user_id,
-          start_at: s.start_at,
-          end_at: s.end_at,
-          note: s.note
-        }));
-        setAccepted(accMapped);
-      } catch (err) {
-        console.log('Failed to fetch matches', err);
+        if (!myIdStr) { setLoading(false); return; }
+        const idNum = Number(myIdStr);
+        setMyId(idNum);
+        await fetchData(idNum);
       } finally {
         setLoading(false);
       }
     };
+    init();
 
-    run();
-  }, [navigate]);
+    let interval: any;
+    if (myId) {
+      interval = setInterval(() => fetchData(myId).catch(() => {}), 10000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [navigate, myId]);
 
   const handleAccept = async (sessionId: number) => {
     try {
@@ -174,6 +171,7 @@ const Matches = () => {
 
       toast.success('Session accepted!');
       setPending((prev) => prev.filter((s) => s.id !== sessionId));
+      if (myId) fetchData(myId);
     } catch (e: any) {
       console.log('Accept failed', e);
       toast.error(`Accept failed: ${e?.message || 'Unknown error'}`);
@@ -189,6 +187,7 @@ const Matches = () => {
       if (error) throw error;
       toast.success('Session declined');
       setPending((prev) => prev.filter((s) => s.id !== sessionId));
+      if (myId) fetchData(myId);
     } catch (e: any) {
       console.log('Decline failed', e);
       toast.error(`Decline failed: ${e?.message || 'Unknown error'}`);
@@ -210,6 +209,7 @@ const Matches = () => {
       });
       if (!res.ok) throw new Error('Failed to send connect request');
       toast.success('Connection request sent!');
+      if (myId) fetchData(myId);
     } catch (e: any) {
       console.log('Connect failed', e);
       toast.error(`Connect failed: ${e?.message || 'Unknown error'}`);
@@ -289,6 +289,7 @@ const Matches = () => {
         throw new Error(j?.error || 'Failed to propose');
       }
       toast.success('Session proposed!');
+      if (myId) fetchData(myId);
     } catch (e: any) {
       console.log('Failed to propose session', e);
       toast.error(`Failed to propose session: ${e?.message || 'Unknown error'}`);
