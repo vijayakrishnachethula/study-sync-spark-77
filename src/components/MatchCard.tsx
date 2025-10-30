@@ -14,10 +14,12 @@ interface MatchCardProps {
   matchScore: MatchScore;
   index: number;
   onPropose?: (targetId: string | number) => void;
+  onConnect?: (targetId: number) => void;
+  isConnected?: boolean;
 }
 
-export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardProps) => {
-  const [connected, setConnected] = useState(false);
+export const MatchCard = ({ profile, matchScore, index, onPropose, onConnect, isConnected }: MatchCardProps) => {
+  const [connected, setConnected] = useState<boolean>(Boolean(isConnected));
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'bg-secondary text-secondary-foreground';
@@ -26,6 +28,7 @@ export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardPr
   };
 
   const handleConnect = () => {
+    if (onConnect) onConnect(Number(profile.id));
     setConnected(true);
     
     if (matchScore.score >= 80) {
@@ -153,9 +156,10 @@ export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardPr
               <Button
                 variant="outline"
                 onClick={() => onPropose(profile.id)}
+                disabled={!connected}
                 className="w-full"
               >
-                Propose session
+                {connected ? 'Propose session' : 'Connect first'}
               </Button>
             </motion.div>
           )}

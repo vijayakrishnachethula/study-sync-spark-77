@@ -17,6 +17,8 @@ const Matches = () => {
   const [matches, setMatches] = useState<Array<{ profile: UserProfile; score: MatchScore }>>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<Array<{ id: number; from_user_id: number; start_at: string; end_at: string }>>([]);
+  const [pendingConns, setPendingConns] = useState<Array<{ id: number; from_user_id: number; from_name: string; accept_token: string }>>([]);
+  const [connectedIds, setConnectedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const run = async () => {
@@ -70,12 +72,123 @@ const Matches = () => {
           .order('created_at', { ascending: false });
         if (pErr) throw pErr;
         setPending((pend || []).map((s: any) => ({ id: s.id, from_user_id: s.from_user_id, start_at: s.start_at, end_at: s.end_at })));
+
+        // Fetch connections to gate propose
+        // 1) Connected pairs involving me
+        const { data: connsConnected, error: cErr } = await supabase
+          .from('connections')
+          .select('id, user_a_id, user_b_id, status')
+          .or(`user_a_id.eq.${meId},user_b_id.eq.${meId}`)
+          .eq('status', 'connected');
+        if (cErr) throw cErr;
+        const cSet = new Set<number>();
+        (connsConnected || []).forEach((c: any) => {
+          const other = c.user_a_id === meId ? c.user_b_id : c.user_a_id;
+          cSet.add(Number(other));
+        });
+        setConnectedIds(cSet);
+
+        // 2) Pending incoming connection requests (to me)
+        const { data: connsPending, error: cpErr } = await supabase
+          .from('connections')
+          .select('id, user_a_id, accept_token')
+          .eq('user_b_id', meId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        if (cpErr) throw cpErr;
+        const fromIds = (connsPending || []).map((c: any) => c.user_a_id);
+        let nameById: Record<number, string> = {};
+        if (fromIds.length) {
+          const { data: fromUsers, error: fuErr } = await supabase
+            .from('users')
+            .select('id, name')
+            .in('id', fromIds);
+          if (fuErr) throw fuErr;
+          (fromUsers || []).forEach((u: any) => { nameById[Number(u.id)] = u.name || `User ${u.id}`; });
+        }
+        setPendingConns((connsPending || []).map((c: any) => ({ id: c.id, from_user_id: c.user_a_id, from_name: nameById[Number(c.user_a_id)] || `User ${c.user_a_id}` , accept_token: c.accept_token })));
       } catch (err) {
         console.log('Failed to fetch matches', err);
       } finally {
         setLoading(false);
       }
     };
+
+  const handleAccept = async (sessionId: number) => {
+    try {
+      const res = await fetch('/api/accept-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sessionId }),
+      });
+      if (!res.ok) throw new Error('Failed to accept');
+      toast.success('Session accepted! Emails sent.');
+      setPending((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch (e: any) {
+      console.log('Accept failed', e);
+      toast.error(`Accept failed: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleDecline = async (sessionId: number) => {
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({ status: 'declined' })
+        .eq('id', sessionId);
+      if (error) throw error;
+      toast.success('Session declined');
+      setPending((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch (e: any) {
+      console.log('Decline failed', e);
+      toast.error(`Decline failed: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleConnect = async (targetId: number) => {
+    try {
+      const myIdStr = localStorage.getItem('studysync-myId');
+      if (!myIdStr) {
+        toast.error('Please create your profile first.');
+        navigate('/');
+        return;
+      }
+      const res = await fetch('/api/connect-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_user_id: Number(myIdStr), to_user_id: Number(targetId) })
+      });
+      if (!res.ok) throw new Error('Failed to send connect request');
+      toast.success('Connection request sent!');
+    } catch (e: any) {
+      console.log('Connect failed', e);
+      toast.error(`Connect failed: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleAcceptConn = async (connId: number, token: string) => {
+    try {
+      window.location.href = `/api/connect-accept?cid=${connId}&t=${encodeURIComponent(token || '')}`;
+    } catch (e) {
+      console.log('Conn accept failed', e);
+      toast.error('Failed to accept connection');
+    }
+  };
+
+  const handleDeclineConn = async (connId: number) => {
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .update({ status: 'declined' })
+        .eq('id', connId);
+      if (error) throw error;
+      toast.success('Connection declined');
+      setPendingConns((prev) => prev.filter((c) => c.id !== connId));
+    } catch (e: any) {
+      console.log('Conn decline failed', e);
+      toast.error(`Decline failed: ${e?.message || 'Unknown error'}`);
+    }
+  };
 
     run();
   }, [navigate]);
@@ -130,6 +243,26 @@ const Matches = () => {
       <ParticleBackground />
       
       <div className="container mx-auto max-w-7xl relative z-10">
+        {/* Pending Connections */}
+        {pendingConns.length > 0 && (
+          <div className="mb-8 p-4 border rounded-xl bg-card">
+            <h2 className="text-2xl font-semibold mb-3">Pending connection requests</h2>
+            <div className="space-y-3">
+              {pendingConns.map((c) => (
+                <div key={c.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg">
+                  <div className="text-sm">
+                    <div className="font-medium">From {c.from_name}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => handleAcceptConn(c.id, c.accept_token)} className="bg-green-600 hover:bg-green-700 text-white">Accept</Button>
+                    <Button onClick={() => handleDeclineConn(c.id)} variant="outline">Decline</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Pending Sessions */}
         {pending.length > 0 && (
           <div className="mb-8 p-4 border rounded-xl bg-card">
@@ -185,6 +318,8 @@ const Matches = () => {
                 matchScore={match.score}
                 index={index}
                 onPropose={handlePropose}
+                onConnect={handleConnect}
+                isConnected={connectedIds.has(Number(match.profile.id))}
               />
             ))}
           </div>
