@@ -11,6 +11,9 @@ function ics({ start, end, summary }) {
 }
 
 async function sendEmail(to, subject, html, attachments = []) {
+  if (process.env.EMAIL_ENABLED !== 'true') {
+    return { ok: true };
+  }
   if (!RESEND_API_KEY) {
     console.log('[accept-session] RESEND_API_KEY missing, skipping email');
     return { ok: true };

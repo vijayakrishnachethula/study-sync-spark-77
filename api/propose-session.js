@@ -30,6 +30,9 @@ function proposeHtml({ receiverName, senderName, topic, timeRange, acceptUrl }) 
 }
 
 async function sendEmail(to, subject, html) {
+  if (process.env.EMAIL_ENABLED !== 'true') {
+    return { ok: true };
+  }
   if (!RESEND_API_KEY) {
     console.log('[propose-session] RESEND_API_KEY missing, skipping email');
     return { ok: true };
@@ -54,16 +57,17 @@ export default async function handler(req, res) {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const { from_user_id, to_user_id, start_at, end_at, topic, message } = req.body || {};
+    const { from_user_id, to_user_id, start_at, end_at, topic, message, note } = req.body || {};
     if (!from_user_id || !to_user_id || !start_at || !end_at) {
       return res.status(400).json({ error: 'from_user_id, to_user_id, start_at, end_at required' });
     }
 
     // Insert session with accept token
     const token = randomToken();
+    const safeNote = note ? (typeof note === 'object' ? JSON.stringify(note) : String(note)) : (message || '');
     const { data: inserted, error: iErr } = await supabase
       .from('sessions')
-      .insert({ from_user_id, to_user_id, start_at, end_at, note: message || '', status: 'pending', accept_token: token })
+      .insert({ from_user_id, to_user_id, start_at, end_at, note: safeNote, status: 'pending', accept_token: token })
       .select('id, accept_token')
       .single();
     if (iErr) throw iErr;

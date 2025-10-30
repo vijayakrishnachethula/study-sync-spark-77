@@ -131,7 +131,31 @@ const Matches = () => {
         body: JSON.stringify({ id: sessionId }),
       });
       if (!res.ok) throw new Error('Failed to accept');
-      toast.success('Session accepted! Emails sent.');
+      // Ask accepter consent to add their contact
+      const shareEmail = window.confirm('Do you want to share YOUR EMAIL with the other person for this session? OK to share, Cancel to skip.');
+      const sharePhone = window.confirm('Do you want to share YOUR PHONE number with the other person for this session? OK to share, Cancel to skip.');
+      const stored = localStorage.getItem('studysync-profile');
+      const myProfile: any = stored ? JSON.parse(stored) : {};
+      const accepter = {
+        consented: true,
+        email: shareEmail ? (myProfile?.email || '') : '',
+        phone: sharePhone ? (myProfile?.phone || '') : '',
+        at: new Date().toISOString(),
+      };
+      // Merge accepter into note; fetch current note then update
+      const { data: sessRow } = await supabase
+        .from('sessions')
+        .select('note')
+        .eq('id', sessionId)
+        .single();
+      let noteObj: any = {};
+      if (sessRow?.note) {
+        try { noteObj = typeof sessRow.note === 'string' ? JSON.parse(sessRow.note) : sessRow.note; } catch {}
+      }
+      noteObj.accepter = accepter;
+      await supabase.from('sessions').update({ note: JSON.stringify(noteObj) }).eq('id', sessionId);
+
+      toast.success('Session accepted!');
       setPending((prev) => prev.filter((s) => s.id !== sessionId));
     } catch (e: any) {
       console.log('Accept failed', e);
@@ -216,6 +240,20 @@ const Matches = () => {
       const endDt = new Date(startDt);
       endDt.setHours(endDt.getHours() + 1);
 
+      // Consent prompt for sharing proposer contact
+      const shareEmail = window.confirm('Do you want to share your EMAIL with this person for this session? Click OK to share, Cancel to skip.');
+      const sharePhone = window.confirm('Do you want to share your PHONE number with this person for this session? Click OK to share, Cancel to skip.');
+
+      // Get my contact from local profile (fallback values empty)
+      const stored = localStorage.getItem('studysync-profile');
+      const myProfile: any = stored ? JSON.parse(stored) : {};
+      const proposer = {
+        consented: true,
+        email: shareEmail ? (myProfile?.email || '') : '',
+        phone: sharePhone ? (myProfile?.phone || '') : '',
+        at: new Date().toISOString(),
+      };
+
       const res = await fetch('/api/propose-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -225,14 +263,15 @@ const Matches = () => {
           start_at: startDt.toISOString(),
           end_at: endDt.toISOString(),
           topic: 'Study Session',
-          message: ''
+          message: '',
+          note: { proposer }
         })
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || 'Failed to propose');
       }
-      toast.success('Session proposed! Email sent to recipient.');
+      toast.success('Session proposed!');
     } catch (e: any) {
       console.log('Failed to propose session', e);
       toast.error(`Failed to propose session: ${e?.message || 'Unknown error'}`);

@@ -24,6 +24,9 @@ function connectionRequestHtml({ receiverName, senderName, acceptUrl }) {
 }
 
 async function sendEmail(to, subject, html) {
+  if (process.env.EMAIL_ENABLED !== 'true') {
+    return { ok: true };
+  }
   if (!RESEND_API_KEY) {
     console.log('[connect-request] RESEND_API_KEY missing, skipping email');
     return { ok: true };
