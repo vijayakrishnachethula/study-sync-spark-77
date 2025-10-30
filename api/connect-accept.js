@@ -6,6 +6,12 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const APP_URL = process.env.APP_URL || 'https://studynsync.vercel.app';
 
+function safeFrom() {
+  const val = RESEND_FROM || '';
+  const ok = /.+\s<[^@\s]+@[^@\s]+\.[^@\s]+>$/i.test(val) || /^[^@\s]+@[^@\s]+\.[^@\s]+$/i.test(val);
+  return ok ? val : 'StudyNSync <onboarding@resend.dev>';
+}
+
 async function sendEmail(to, subject, html) {
   if (!RESEND_API_KEY) {
     console.log('[connect-accept] RESEND_API_KEY missing, skipping email');
@@ -17,7 +23,7 @@ async function sendEmail(to, subject, html) {
       Authorization: `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: RESEND_FROM, to: Array.isArray(to) ? to : [to], subject, html }),
+    body: JSON.stringify({ from: safeFrom(), to: Array.isArray(to) ? to : [to], subject, html }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || 'Email send failed');
