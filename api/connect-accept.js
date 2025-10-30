@@ -4,6 +4,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'StudyNSync <onboarding@resend.dev>';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+const APP_URL = process.env.APP_URL || 'https://studynsync.vercel.app';
 
 async function sendEmail(to, subject, html) {
   if (!RESEND_API_KEY) {
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
     // Notify both users: names only, no contacts
     const { data: users, error: u2 } = await supabase
       .from('users')
-      .select('id, name, email')
+      .select('id, name, email, phone')
       .in('id', [conn.user_a_id, conn.user_b_id]);
     if (u2) throw u2;
     const a = users?.find(u => u.id === conn.user_a_id);
@@ -63,15 +64,42 @@ export default async function handler(req, res) {
     const recipients = [a?.email, b?.email].filter(Boolean);
     if (recipients.length) {
       const html = `
-      <div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#0f172a">
-        <h2 style="margin:0 0 12px">You’re Connected! 🎉</h2>
-        <p>Hi there,</p>
-        <p>Great news! <strong>${a?.name || a?.id}</strong> and <strong>${b?.name || b?.id}</strong> are now connected on <strong>StudyNSync</strong>.</p>
-        <p>You can start collaborating, share resources, or schedule your study sessions right away.</p>
-        <p>Happy Learning!</p>
-        <p>With regards,<br/>StudyNSync<br/>C Vijaya Krishna</p>
-      </div>`;
-      await sendEmail(recipients, 'You’re Connected! 🎉', html);
+      <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+        <h2 style="color:#28a745;">You’re Now Connected! 🎉</h2>
+
+        <p>Hi <strong>${a?.name || a?.id}</strong> and <strong>${b?.name || b?.id}</strong>,</p>
+
+        <p>
+          Great news! You both are now connected on <strong>StudyNSync</strong>.  
+          You can start collaborating, sharing notes, and scheduling your study sessions right away.
+        </p>
+
+        <h3 style="color:#0073e6;">📞 Connection Details</h3>
+
+        <p>
+          <strong>${a?.name || a?.id}</strong><br>
+          Email: ${a?.email || 'N/A'}<br>
+          Contact: ${a?.phone || 'N/A'}<br><br>
+
+          <strong>${b?.name || b?.id}</strong><br>
+          Email: ${b?.email || 'N/A'}<br>
+          Contact: ${b?.phone || 'N/A'}
+        </p>
+
+        <p>
+          Begin your first session by visiting your  
+          <a href="${APP_URL}" style="color:#0073e6;">StudyNSync Dashboard</a>.
+        </p>
+
+        <br>
+        <p>
+          With regards,<br>
+          <strong>StudyNSync</strong><br>
+          C Vijaya Krishna
+        </p>
+      </div>
+      `;
+      await sendEmail(recipients, '🎉 Connection Accepted on StudyNSync!', html);
     }
 
     return res.status(302).setHeader('Location', '/?connected=1').end();
