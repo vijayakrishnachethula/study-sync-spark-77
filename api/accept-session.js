@@ -40,31 +40,18 @@ export default async function handler(req, res) {
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Accept by POST body or GET query with token
-    let id;
-    let token;
-    if (req.method === 'POST') {
-      id = (req.body || {}).id;
-    } else if (req.method === 'GET') {
-      id = req.query?.id ? Number(req.query.id) : undefined;
-      token = req.query?.t;
-    } else {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const id = (req.body || {}).id;
     if (!id) return res.status(400).json({ error: 'id required' });
 
     // Fetch session
     const { data: session, error: sErr } = await supabase
       .from('sessions')
-      .select('id, from_user_id, to_user_id, start_at, end_at, status, accept_token')
+      .select('id, from_user_id, to_user_id, start_at, end_at, status')
       .eq('id', id)
       .single();
     if (sErr) throw sErr;
     if (!session) return res.status(404).json({ error: 'session not found' });
-
-    if (token && session.accept_token && token !== session.accept_token) {
-      return res.status(403).json({ error: 'invalid token' });
-    }
 
     // Update status to accepted
     const { error: uErr } = await supabase
@@ -100,10 +87,6 @@ export default async function handler(req, res) {
       await sendEmail(recipients, 'Your Study Session Is Confirmed', html, attachments);
     }
 
-    // For GET acceptance, redirect to app success page
-    if (req.method === 'GET') {
-      return res.status(302).setHeader('Location', '/?accepted=1').end();
-    }
     return res.json({ ok: true });
   } catch (e) {
     console.error('[accept-session]', e?.message || e);

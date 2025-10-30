@@ -6,11 +6,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const APP_URL = process.env.APP_URL || 'https://studynsync.vercel.app';
 
-function randomToken() {
-  return (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)) + Math.random().toString(36).slice(2);
-}
-
-function proposeHtml({ receiverName, senderName, topic, timeRange, acceptUrl }) {
+function proposeHtml({ receiverName, senderName, topic, timeRange }) {
   return `
   <div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#0f172a">
     <h2 style="margin:0 0 12px">New Study Session Proposal on <span style="color:#2563eb">StudyNSync</span></h2>
@@ -20,9 +16,7 @@ function proposeHtml({ receiverName, senderName, topic, timeRange, acceptUrl }) 
       <li><strong>Topic:</strong> ${topic || 'Study Session'}</li>
       <li><strong>Date & Time:</strong> ${timeRange}</li>
     </ul>
-    <p>You can accept directly here:</p>
-    <p><a href="${acceptUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Accept session</a></p>
-    <p>Or open your StudyNSync dashboard to review.</p>
+    <p>Open your StudyNSync dashboard to review.</p>
     <p><a href="${APP_URL}" style="display:inline-block;background:#0ea5e9;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open StudyNSync</a></p>
     <p>With regards,<br/>StudyNSync<br/>C Vijaya Krishna</p>
   </div>
@@ -62,13 +56,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'from_user_id, to_user_id, start_at, end_at required' });
     }
 
-    // Insert session with accept token
-    const token = randomToken();
+    // Insert session (no email accept token)
     const safeNote = note ? (typeof note === 'object' ? JSON.stringify(note) : String(note)) : (message || '');
     const { data: inserted, error: iErr } = await supabase
       .from('sessions')
-      .insert({ from_user_id, to_user_id, start_at, end_at, note: safeNote, status: 'pending', accept_token: token })
-      .select('id, accept_token')
+      .insert({ from_user_id, to_user_id, start_at, end_at, note: safeNote, status: 'pending' })
+      .select('id')
       .single();
     if (iErr) throw iErr;
 
@@ -85,11 +78,10 @@ export default async function handler(req, res) {
     const receiverEmail = receiver?.email;
     if (receiverEmail) {
       const timeRange = `${start_at} - ${end_at}`;
-      const acceptUrl = `${APP_URL}/api/accept-session?id=${inserted?.id}&t=${encodeURIComponent(inserted?.accept_token || token)}`;
       await sendEmail(
         receiverEmail,
         'New Study Session Proposal on StudyNSync',
-        proposeHtml({ receiverName: receiver?.name, senderName: sender?.name, topic, timeRange, acceptUrl })
+        proposeHtml({ receiverName: receiver?.name, senderName: sender?.name, topic, timeRange })
       );
     }
 

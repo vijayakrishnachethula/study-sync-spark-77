@@ -79,7 +79,7 @@ export const MatchCard = ({ profile, matchScore, index, onPropose, onConnect, is
           <p className="text-muted-foreground italic mb-4">{profile.bio}</p>
         )}
 
-        {/* Details */}
+        {/* Details (only name, courses, schedule) */}
         <div className="space-y-3 mb-4">
           <div className="flex items-start gap-2">
             <FaBook className="text-primary mt-1 flex-shrink-0" />
@@ -96,46 +96,6 @@ export const MatchCard = ({ profile, matchScore, index, onPropose, onConnect, is
               <p className="text-foreground">{profile.schedule}</p>
             </div>
           </div>
-
-          <div className="flex items-start gap-2">
-            <FaBrain className="text-primary mt-1 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-sm text-muted-foreground">Study Style</p>
-              <p className="text-foreground">{profile.studyStyle}</p>
-            </div>
-          </div>
-
-          {(profile.phone || profile.email || profile.instagram) && (
-            <div className="mt-2 grid grid-cols-1 gap-2">
-              {profile.phone && (
-                <div className="text-sm">
-                  <span className="font-semibold text-muted-foreground">Phone: </span>
-                  <span className="text-foreground">{profile.phone}</span>
-                </div>
-              )}
-              {profile.email && (
-                <div className="text-sm">
-                  <span className="font-semibold text-muted-foreground">Email: </span>
-                  <span className="text-foreground">{profile.email}</span>
-                </div>
-              )}
-              {profile.instagram && (
-                <div className="text-sm">
-                  <span className="font-semibold text-muted-foreground">Instagram: </span>
-                  <span className="text-foreground">{profile.instagram}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Radar Chart */}
-        <div className="my-6 p-4 bg-background/50 rounded-lg">
-          <RadarChart
-            courseOverlap={matchScore.breakdown.courseOverlap}
-            scheduleCompatibility={matchScore.breakdown.scheduleCompatibility}
-            studyStyleMatch={matchScore.breakdown.studyStyleMatch}
-          />
         </div>
 
         {/* Removed CS Icebreaker for a cleaner UI */}
