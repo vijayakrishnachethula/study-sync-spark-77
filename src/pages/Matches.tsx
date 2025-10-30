@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile } from '@/utils/mockProfiles';
-import { MatchScore } from '@/utils/matcher';
-import axios from 'axios';
+import { MatchScore, calculateMatch } from '@/utils/matcher';
+import { supabase } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { ParticleBackground } from '@/components/ParticleBackground';
 import { CosmicLoader } from '@/components/CosmicLoader';
@@ -19,47 +19,46 @@ const Matches = () => {
 
   useEffect(() => {
     const run = async () => {
-      const storedProfile = localStorage.getItem('studysync-profile');
-      if (!storedProfile) {
-        navigate('/');
-        return;
-      }
-      const baseURL =
-        import.meta.env.VITE_API_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5000'
-          : '/api');
-      let myIdStr = localStorage.getItem('studysync-myId');
-      const profile: UserProfile = JSON.parse(storedProfile);
-      setUserProfile(profile);
+      try {
+        const stored = localStorage.getItem('studysync-profile');
+        const myProfile: UserProfile | null = stored ? JSON.parse(stored) : null;
+        setUserProfile(myProfile);
 
-      // If we don't have an id yet (e.g., profile saved before backend was added), create it now
-      if (!myIdStr) {
-        try {
-          const res = await axios.post(`${baseURL}/api/users`, {
-            name: profile.name,
-            courses: profile.courses,
-            schedule: profile.schedule,
-            studyStyle: profile.studyStyle,
-          });
-          const savedId = res.data?.id;
-          if (savedId) {
-            myIdStr = String(savedId);
-            localStorage.setItem('studysync-myId', myIdStr);
-            localStorage.setItem('studysync-profile', JSON.stringify({ ...profile, id: myIdStr }));
-          }
-        } catch (e) {
-          console.log('Failed to create user for matches', e);
-          // If backend is unreachable, still allow UI to render with empty matches
+        const myIdStr = localStorage.getItem('studysync-myId');
+        if (!myIdStr) {
           setLoading(false);
           return;
         }
-      }
 
-      try {
-        const res = await axios.get(`${baseURL}/api/matches`, { params: { myId: myIdStr } });
-        const data = res.data as Array<{ profile: UserProfile; score: MatchScore }>;
-        setMatches(data);
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, courses, schedule, study_style, phone, email, instagram');
+        if (error) throw error;
+
+        const users: UserProfile[] = (data || []).map((u: any) => ({
+          id: u.id,
+          name: u.name || `User ${u.id}`,
+          courses: u.courses || [],
+          schedule: u.schedule || '',
+          studyStyle: u.study_style || 'Visual',
+          phone: u.phone || undefined,
+          email: u.email || undefined,
+          instagram: u.instagram || undefined,
+        }));
+
+        const meId = Number(myIdStr);
+        const me = users.find(u => Number(u.id) === meId);
+        if (!me) {
+          setLoading(false);
+          return;
+        }
+
+        const candidates = users.filter(u => Number(u.id) !== meId);
+        // Use existing matcher util
+        const scored = candidates
+          .map((c) => ({ profile: c, score: calculateMatch(me, c) })) as Array<{ profile: UserProfile; score: MatchScore }>;
+
+        setMatches(scored.sort((a, b) => b.score.score - a.score.score).slice(0, 9));
       } catch (err) {
         console.log('Failed to fetch matches', err);
       } finally {
@@ -79,23 +78,20 @@ const Matches = () => {
         return;
       }
 
-      const start = window.prompt('Enter start time (ISO, e.g., 2025-10-30T12:00:00Z)');
+      const start = window.prompt('Enter start time (ISO, e.g., 2025-11-01T10:00:00Z)');
       if (!start) return;
       const end = window.prompt('Enter end time (ISO, after start)');
       if (!end) return;
 
-      const baseURL =
-        import.meta.env.VITE_API_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5000'
-          : '/api');
-
-      await axios.post(`${baseURL}/api/sessions/propose`, {
-        fromUserId: Number(myIdStr),
-        toUserId: Number(targetId),
-        start,
-        end,
+      const { error } = await supabase.from('sessions').insert({
+        from_user_id: Number(myIdStr),
+        to_user_id: Number(targetId),
+        start_at: start,
+        end_at: end,
+        note: '',
+        status: 'pending',
       });
+      if (error) throw error;
       toast.success('Session proposed! Waiting for acceptance.');
     } catch (e) {
       console.log('Failed to propose session', e);

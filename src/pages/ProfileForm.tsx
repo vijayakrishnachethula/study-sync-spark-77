@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { UserProfile } from '@/utils/mockProfiles';
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 import { ProTipsModal } from '@/components/ProTipsModal';
 import { TerminalModal } from '@/components/TerminalModal';
 import { useToast } from '@/hooks/use-toast';
@@ -91,31 +92,33 @@ const ProfileForm = () => {
     localStorage.setItem('studysync-profile', JSON.stringify(userProfile));
 
     try {
-      const baseURL =
-        import.meta.env.VITE_API_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5000'
-          : '/api');
-      const res = await axios.post(`${baseURL}/api/users`, {
-        id: undefined,
-        name: userProfile.name,
-        courses: userProfile.courses,
-        schedule: userProfile.schedule,
-        studyStyle: userProfile.studyStyle,
-        phone: userProfile.phone,
-        email: userProfile.email,
-        instagram: userProfile.instagram,
-      });
-      const savedId = res.data?.id;
-      if (savedId) {
-        localStorage.setItem('studysync-myId', String(savedId));
-        localStorage.setItem('studysync-profile', JSON.stringify({ ...userProfile, id: String(savedId) }));
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          name: userProfile.name,
+          courses: userProfile.courses,
+          schedule: userProfile.schedule,
+          study_style: userProfile.studyStyle as any,
+          bio: userProfile.bio || '',
+          phone: userProfile.phone || '',
+          email: userProfile.email || '',
+          instagram: userProfile.instagram || '',
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      if (data?.id) {
+        localStorage.setItem('studysync-myId', String(data.id));
       }
+      setIsSubmitting(false);
+      navigate('/matches');
     } catch (err) {
-      console.log('Failed to save profile', err);
+      console.log('Failed to save profile to Supabase', err);
+      setIsSubmitting(false);
+      navigate('/matches');
     }
 
-    // Show pro tips, then navigate
     setTimeout(() => {
       setShowProTips(true);
       setTimeout(() => {
