@@ -19,6 +19,7 @@ const Matches = () => {
   const [pending, setPending] = useState<Array<{ id: number; from_user_id: number; start_at: string; end_at: string }>>([]);
   const [pendingConns, setPendingConns] = useState<Array<{ id: number; from_user_id: number; from_name: string; accept_token: string }>>([]);
   const [connectedIds, setConnectedIds] = useState<Set<number>>(new Set());
+  const [accepted, setAccepted] = useState<Array<{ id: number; other_user_id: number; start_at: string; end_at: string; note: any }>>([]);
 
   useEffect(() => {
     const run = async () => {
@@ -113,6 +114,22 @@ const Matches = () => {
           (fromUsers || []).forEach((u: any) => { nameById[Number(u.id)] = u.name || `User ${u.id}`; });
         }
         setPendingConns((connsPending || []).map((c: any) => ({ id: c.id, from_user_id: c.user_a_id, from_name: nameById[Number(c.user_a_id)] || `User ${c.user_a_id}` , accept_token: c.accept_token })));
+
+        // 3) Accepted sessions involving me (to display shared contacts post-acceptance)
+        const { data: acc, error: accErr } = await supabase
+          .from('sessions')
+          .select('id, from_user_id, to_user_id, start_at, end_at, status, note')
+          .or(`from_user_id.eq.${meId},to_user_id.eq.${meId}`)
+          .eq('status', 'accepted');
+        if (accErr) throw accErr;
+        const accMapped = (acc || []).map((s: any) => ({
+          id: s.id,
+          other_user_id: s.from_user_id === meId ? s.to_user_id : s.from_user_id,
+          start_at: s.start_at,
+          end_at: s.end_at,
+          note: s.note
+        }));
+        setAccepted(accMapped);
       } catch (err) {
         console.log('Failed to fetch matches', err);
       } finally {
@@ -304,6 +321,42 @@ const Matches = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {/* Accepted Sessions (show shared contact details) */}
+        {accepted.length > 0 && (
+          <div className="mb-8 p-4 border rounded-xl bg-card">
+            <h2 className="text-2xl font-semibold mb-3">Upcoming accepted sessions</h2>
+            <div className="space-y-3">
+              {accepted.map((s) => {
+                let noteObj: any = {};
+                try { noteObj = typeof s.note === 'string' ? JSON.parse(s.note) : (s.note || {}); } catch {}
+                const proposer = noteObj?.proposer || {};
+                const accepter = noteObj?.accepter || {};
+                return (
+                  <div key={s.id} className="p-3 border rounded-lg text-sm">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div>
+                        <div className="font-medium">With user #{s.other_user_id}</div>
+                        <div className="text-muted-foreground">{new Date(s.start_at).toLocaleString()} → {new Date(s.end_at).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="p-2 rounded bg-muted/40">
+                        <div className="font-semibold mb-1">Their shared contact</div>
+                        <div>Email: {proposer.email || accepter.email || 'Not shared'}</div>
+                        <div>Phone: {proposer.phone || accepter.phone || 'Not shared'}</div>
+                      </div>
+                      <div className="p-2 rounded bg-muted/40">
+                        <div className="font-semibold mb-1">Your shared contact</div>
+                        <div>Email: {accepter.email || proposer.email || 'Not shared'}</div>
+                        <div>Phone: {accepter.phone || proposer.phone || 'Not shared'}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

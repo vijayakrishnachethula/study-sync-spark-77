@@ -1,10 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FaBook, FaSun, FaMoon } from 'react-icons/fa';
-import { useTheme } from '@/contexts/ThemeContext';
+import { FaBook } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 export const Navbar = () => {
-  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
   return (
@@ -50,28 +48,7 @@ export const Navbar = () => {
             Matches
           </Link>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            whileHover={{ scale: 1.05 }}
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            onClick={toggleTheme}
-            className="p-2 rounded-lg bg-muted hover:bg-accent transition-colors"
-            aria-label="Toggle theme"
-          >
-            <motion.div
-              key={theme}
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              {theme === 'light' ? (
-                <FaMoon className="text-lg text-primary" />
-              ) : (
-                <FaSun className="text-lg text-secondary" />
-              )}
-            </motion.div>
-          </motion.button>
+          {/* Theme toggle removed; dark mode is default */}
         </div>
       </div>
     </motion.nav>
