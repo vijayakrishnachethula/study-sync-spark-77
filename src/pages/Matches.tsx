@@ -68,8 +68,7 @@ const Matches = () => {
           .from('sessions')
           .select('id, from_user_id, start_at, end_at, status')
           .eq('to_user_id', meId)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
+          .eq('status', 'pending');
         if (pErr) throw pErr;
         setPending((pend || []).map((s: any) => ({ id: s.id, from_user_id: s.from_user_id, start_at: s.start_at, end_at: s.end_at })));
 
@@ -93,8 +92,7 @@ const Matches = () => {
           .from('connections')
           .select('id, user_a_id, accept_token')
           .eq('user_b_id', meId)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
+          .eq('status', 'pending');
         if (cpErr) throw cpErr;
         const fromIds = (connsPending || []).map((c: any) => c.user_a_id);
         let nameById: Record<number, string> = {};
