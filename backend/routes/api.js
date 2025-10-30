@@ -2,13 +2,20 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Availability = require('../models/Availability');
+const Session = require('../models/Session');
 const { computeMatch } = require('../utils/matcher');
 const seed = require('./seed');
+const { sendEmail } = require('../utils/email');
 
 // In-memory fallback store
 const memory = {
   users: [],
   nextId: 1,
+  availability: [], // { id, userId, start, end, note }
+  sessions: [], // { id, fromUserId, toUserId, start, end, note, status }
+  nextAvailId: 1,
+  nextSessionId: 1,
 };
 
 function isMongoConnected() {
@@ -48,6 +55,9 @@ router.post('/users', async (req, res) => {
       schedule: String(body.schedule || ''),
       studyStyle: body.studyStyle,
       bio: body.bio || '',
+      phone: body.phone || '',
+      email: body.email || '',
+      instagram: body.instagram || '',
     };
 
     if (isMongoConnected()) {
@@ -137,5 +147,129 @@ router.post('/seed', async (_req, res) => {
 });
 
 module.exports = router;
+
+// -----------------------------
+// Availability Endpoints
+// -----------------------------
+
+// POST /api/availability  { userId, start, end, note }
+router.post('/availability', async (req, res) => {
+  try {
+    const { userId, start, end, note } = req.body || {};
+    const uid = Number(userId);
+    if (!Number.isFinite(uid)) return res.status(400).json({ error: 'userId required as number' });
+    const startDt = new Date(start);
+    const endDt = new Date(end);
+    if (!(startDt instanceof Date) || isNaN(startDt.getTime()) || !(endDt instanceof Date) || isNaN(endDt.getTime()) || endDt <= startDt) {
+      return res.status(400).json({ error: 'invalid start/end' });
+    }
+
+    if (isMongoConnected()) {
+      const doc = await Availability.create({ userId: uid, start: startDt, end: endDt, note: note || '', expiresAt: endDt });
+      return res.json({ ok: true, id: String(doc._id) });
+    }
+    const id = memory.nextAvailId++;
+    memory.availability.push({ id, userId: uid, start: startDt, end: endDt, note: note || '' });
+    return res.json({ ok: true, id });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/availability?userId=123
+router.get('/availability', async (req, res) => {
+  try {
+    const uid = req.query.userId ? Number(req.query.userId) : null;
+    if (isMongoConnected()) {
+      const query = uid ? { userId: uid } : {};
+      const rows = await Availability.find(query).lean();
+      return res.json(rows);
+    }
+    const now = Date.now();
+    const rows = memory.availability.filter(a => (!uid || a.userId === uid) && new Date(a.end).getTime() > now);
+    return res.json(rows);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// -----------------------------
+// Session Endpoints
+// -----------------------------
+
+// POST /api/sessions/propose { fromUserId, toUserId, start, end, note }
+router.post('/sessions/propose', async (req, res) => {
+  try {
+    const { fromUserId, toUserId, start, end, note } = req.body || {};
+    const f = Number(fromUserId), t = Number(toUserId);
+    if (!Number.isFinite(f) || !Number.isFinite(t)) return res.status(400).json({ error: 'fromUserId and toUserId must be numbers' });
+    const startDt = new Date(start); const endDt = new Date(end);
+    if (!(startDt instanceof Date) || isNaN(startDt.getTime()) || !(endDt instanceof Date) || isNaN(endDt.getTime()) || endDt <= startDt) {
+      return res.status(400).json({ error: 'invalid start/end' });
+    }
+
+    if (isMongoConnected()) {
+      const doc = await Session.create({ fromUserId: f, toUserId: t, start: startDt, end: endDt, note: note || '', status: 'pending', expiresAt: startDt });
+      return res.json({ ok: true, id: String(doc._id) });
+    }
+    const id = String(memory.nextSessionId++);
+    memory.sessions.push({ id, fromUserId: f, toUserId: t, start: startDt, end: endDt, note: note || '', status: 'pending' });
+    return res.json({ ok: true, id });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/sessions/:id/accept
+router.post('/sessions/:id/accept', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let session;
+    if (isMongoConnected()) {
+      session = await Session.findById(id);
+      if (!session) return res.status(404).json({ error: 'session not found' });
+      session.status = 'accepted';
+      await session.save();
+      const a = await User.findOne({ id: session.fromUserId }).lean();
+      const b = await User.findOne({ id: session.toUserId }).lean();
+      if (a && b) {
+        const text = `Your StudySync session is confirmed!\n\nWhen: ${session.start.toISOString()} - ${session.end.toISOString()}\n\nPartner A: ${a.name} (${a.email || 'no email'})\nPartner B: ${b.name} (${b.email || 'no email'})\n\nHappy studying!`;
+        await sendEmail({ to: [a.email, b.email].filter(Boolean), subject: 'StudySync session confirmed', text });
+      }
+      return res.json({ ok: true });
+    }
+    session = memory.sessions.find(s => String(s.id) === String(id));
+    if (!session) return res.status(404).json({ error: 'session not found' });
+    session.status = 'accepted';
+    // Try to lookup users in memory
+    const a = memory.users.find(u => u.id === session.fromUserId) || {};
+    const b = memory.users.find(u => u.id === session.toUserId) || {};
+    const text = `Your StudySync session is confirmed!\n\nWhen: ${new Date(session.start).toISOString()} - ${new Date(session.end).toISOString()}\n\nPartner A: ${a.name || session.fromUserId} (${a.email || 'no email'})\nPartner B: ${b.name || session.toUserId} (${b.email || 'no email'})`;
+    await sendEmail({ to: [a.email, b.email].filter(Boolean), subject: 'StudySync session confirmed', text });
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/sessions/:id/decline
+router.post('/sessions/:id/decline', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (isMongoConnected()) {
+      const session = await Session.findById(id);
+      if (!session) return res.status(404).json({ error: 'session not found' });
+      session.status = 'declined';
+      await session.save();
+      return res.json({ ok: true });
+    }
+    const s = memory.sessions.find(x => String(x.id) === String(id));
+    if (!s) return res.status(404).json({ error: 'session not found' });
+    s.status = 'declined';
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
 
 

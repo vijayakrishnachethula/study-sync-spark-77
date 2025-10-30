@@ -30,6 +30,9 @@ const ProfileForm = () => {
     courses: '',
     schedule: '',
     studyStyle: '' as UserProfile['studyStyle'] | '',
+    phone: '',
+    email: '',
+    instagram: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,19 +82,29 @@ const ProfileForm = () => {
       courses,
       schedule: formData.schedule,
       studyStyle: formData.studyStyle as UserProfile['studyStyle'],
+      phone: formData.phone || undefined,
+      email: formData.email || undefined,
+      instagram: formData.instagram || undefined,
     };
 
     // Save basic profile locally regardless of backend status
     localStorage.setItem('studysync-profile', JSON.stringify(userProfile));
 
     try {
-      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const baseURL =
+        import.meta.env.VITE_API_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5000'
+          : '/api');
       const res = await axios.post(`${baseURL}/api/users`, {
         id: undefined,
         name: userProfile.name,
         courses: userProfile.courses,
         schedule: userProfile.schedule,
         studyStyle: userProfile.studyStyle,
+        phone: userProfile.phone,
+        email: userProfile.email,
+        instagram: userProfile.instagram,
       });
       const savedId = res.data?.id;
       if (savedId) {
@@ -225,6 +238,46 @@ const ProfileForm = () => {
               rows={3}
             />
             {errors.schedule && <p className="text-destructive text-sm mt-1">{errors.schedule}</p>}
+          </motion.div>
+
+          {/* Contact Details (optional) */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            <div>
+              <Label htmlFor="phone" className="text-sm font-medium">Phone (optional)</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+1 555 123 4567"
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium">Email (optional)</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="alex@example.com"
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="instagram" className="text-sm font-medium">Instagram (optional)</Label>
+              <Input
+                id="instagram"
+                value={formData.instagram}
+                onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                placeholder="@alex"
+                className="mt-2"
+              />
+            </div>
           </motion.div>
 
           {/* Study Style - Learner Orbs */}

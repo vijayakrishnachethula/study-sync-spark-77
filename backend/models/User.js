@@ -12,6 +12,9 @@ const UserSchema = new mongoose.Schema(
       required: true,
     },
     bio: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    email: { type: String, default: '' },
+    instagram: { type: String, default: '' },
   },
   { timestamps: true, strict: false }
 );

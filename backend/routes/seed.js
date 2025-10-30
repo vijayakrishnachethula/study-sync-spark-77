@@ -37,6 +37,9 @@ async function seedFromFrontendMocks(memoryRef, MongoModel) {
     schedule: String(u.schedule || ''),
     studyStyle: u.studyStyle,
     bio: u.bio,
+    phone: u.phone || '',
+    email: u.email || '',
+    instagram: u.instagram || '',
   }));
 
   if (MongoModel) {

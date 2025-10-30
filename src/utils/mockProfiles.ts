@@ -5,6 +5,9 @@ export interface UserProfile {
   schedule: string;
   studyStyle: 'Visual' | 'Auditory' | 'Kinesthetic' | 'Reader';
   bio?: string;
+  phone?: string;
+  email?: string;
+  instagram?: string;
 }
 
 export const mockProfiles: UserProfile[] = [

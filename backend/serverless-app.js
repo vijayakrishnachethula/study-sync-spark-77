@@ -7,8 +7,8 @@ const apiRoutes = require('./routes/api');
 
 const app = express();
 
-// Accept same-origin and common localhost dev ports
-app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173'], credentials: false }));
+// Accept same-origin and common localhost dev ports (3000, 5173, 8080)
+app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'], credentials: false }));
 app.use(express.json());
 
 // Health for function root

@@ -13,6 +13,7 @@ interface MatchCardProps {
   profile: UserProfile;
   matchScore: MatchScore;
   index: number;
+  onPropose?: (targetId: string | number) => void;
 }
 
 const csFacts = [
@@ -22,7 +23,7 @@ const csFacts = [
   "🎯 Did you know? Git bisect finds bugs fast",
 ];
 
-export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
+export const MatchCard = ({ profile, matchScore, index, onPropose }: MatchCardProps) => {
   const [quizAnswer, setQuizAnswer] = useState<string>('');
   const [connected, setConnected] = useState(false);
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
@@ -136,6 +137,29 @@ export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
               <p className="text-foreground">{profile.studyStyle}</p>
             </div>
           </div>
+
+          {(profile.phone || profile.email || profile.instagram) && (
+            <div className="mt-2 grid grid-cols-1 gap-2">
+              {profile.phone && (
+                <div className="text-sm">
+                  <span className="font-semibold text-muted-foreground">Phone: </span>
+                  <span className="text-foreground">{profile.phone}</span>
+                </div>
+              )}
+              {profile.email && (
+                <div className="text-sm">
+                  <span className="font-semibold text-muted-foreground">Email: </span>
+                  <span className="text-foreground">{profile.email}</span>
+                </div>
+              )}
+              {profile.instagram && (
+                <div className="text-sm">
+                  <span className="font-semibold text-muted-foreground">Instagram: </span>
+                  <span className="text-foreground">{profile.instagram}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Radar Chart */}
@@ -198,16 +222,29 @@ export const MatchCard = ({ profile, matchScore, index }: MatchCardProps) => {
           </div>
         </div>
 
-        {/* Connect Button */}
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button
-            onClick={handleConnect}
-            disabled={connected}
-            className="w-full gradient-primary text-white font-semibold"
-          >
-            {connected ? '✓ Connected!' : 'Connect'}
-          </Button>
-        </motion.div>
+        {/* Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              onClick={handleConnect}
+              disabled={connected}
+              className="w-full gradient-primary text-white font-semibold"
+            >
+              {connected ? '✓ Connected!' : 'Connect'}
+            </Button>
+          </motion.div>
+          {onPropose && (
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                variant="outline"
+                onClick={() => onPropose(profile.id)}
+                className="w-full"
+              >
+                Propose session
+              </Button>
+            </motion.div>
+          )}
+        </div>
       </Card>
     </motion.div>
   );

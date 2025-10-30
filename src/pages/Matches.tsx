@@ -8,6 +8,7 @@ import { MatchCard } from '@/components/MatchCard';
 import { ParticleBackground } from '@/components/ParticleBackground';
 import { CosmicLoader } from '@/components/CosmicLoader';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { FaArrowLeft, FaTrophy } from 'react-icons/fa';
 
 const Matches = () => {
@@ -23,7 +24,11 @@ const Matches = () => {
         navigate('/');
         return;
       }
-      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const baseURL =
+        import.meta.env.VITE_API_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5000'
+          : '/api');
       let myIdStr = localStorage.getItem('studysync-myId');
       const profile: UserProfile = JSON.parse(storedProfile);
       setUserProfile(profile);
@@ -45,6 +50,7 @@ const Matches = () => {
           }
         } catch (e) {
           console.log('Failed to create user for matches', e);
+          // If backend is unreachable, still allow UI to render with empty matches
           setLoading(false);
           return;
         }
@@ -63,6 +69,39 @@ const Matches = () => {
 
     run();
   }, [navigate]);
+
+  const handlePropose = async (targetId: string | number) => {
+    try {
+      const myIdStr = localStorage.getItem('studysync-myId');
+      if (!myIdStr) {
+        toast.error('Please create your profile first.');
+        navigate('/');
+        return;
+      }
+
+      const start = window.prompt('Enter start time (ISO, e.g., 2025-10-30T12:00:00Z)');
+      if (!start) return;
+      const end = window.prompt('Enter end time (ISO, after start)');
+      if (!end) return;
+
+      const baseURL =
+        import.meta.env.VITE_API_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5000'
+          : '/api');
+
+      await axios.post(`${baseURL}/api/sessions/propose`, {
+        fromUserId: Number(myIdStr),
+        toUserId: Number(targetId),
+        start,
+        end,
+      });
+      toast.success('Session proposed! Waiting for acceptance.');
+    } catch (e) {
+      console.log('Failed to propose session', e);
+      toast.error('Failed to propose session');
+    }
+  };
 
   if (loading) {
     return <CosmicLoader />;
@@ -108,6 +147,7 @@ const Matches = () => {
                 profile={match.profile}
                 matchScore={match.score}
                 index={index}
+                onPropose={handlePropose}
               />
             ))}
           </div>
@@ -120,9 +160,14 @@ const Matches = () => {
             animate={{ opacity: 1 }}
             className="text-center py-12"
           >
-            <p className="text-xl text-muted-foreground">
-              No matches found yet. Try updating your profile!
-            </p>
+            <div className="space-y-2">
+              <p className="text-xl text-muted-foreground">
+                No matches found right now. Your profile is saved.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                We’ll notify you when a match is available. (Notifications not implemented yet.)
+              </p>
+            </div>
           </motion.div>
         )}
       </div>

@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 5000;
 
 const app = express();
 
-// CORS for local frontend (Vite 5173) and React 3000
-app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173'], credentials: false }));
+// CORS for local frontend (Vite 5173/8080) and React 3000
+app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'], credentials: false }));
 
 // Body parser
 app.use(express.json());
