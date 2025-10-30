@@ -78,24 +78,27 @@ const Matches = () => {
         return;
       }
 
-      const start = window.prompt('Enter start time (ISO, e.g., 2025-11-01T10:00:00Z)');
-      if (!start) return;
-      const end = window.prompt('Enter end time (ISO, after start)');
-      if (!end) return;
+      // Default: next full hour for 60 minutes
+      const now = new Date();
+      const startDt = new Date(now);
+      startDt.setMinutes(0, 0, 0);
+      startDt.setHours(startDt.getHours() + 1);
+      const endDt = new Date(startDt);
+      endDt.setHours(endDt.getHours() + 1);
 
       const { error } = await supabase.from('sessions').insert({
         from_user_id: Number(myIdStr),
         to_user_id: Number(targetId),
-        start_at: start,
-        end_at: end,
+        start_at: startDt.toISOString(),
+        end_at: endDt.toISOString(),
         note: '',
         status: 'pending',
       });
       if (error) throw error;
-      toast.success('Session proposed! Waiting for acceptance.');
-    } catch (e) {
+      toast.success('Session proposed for next hour! Waiting for acceptance.');
+    } catch (e: any) {
       console.log('Failed to propose session', e);
-      toast.error('Failed to propose session');
+      toast.error(`Failed to propose session: ${e?.message || 'Unknown error'}`);
     }
   };
 
