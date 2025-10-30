@@ -10,6 +10,7 @@ import ProfileForm from "./pages/ProfileForm";
 import Matches from "./pages/Matches";
 import NotFound from "./pages/NotFound";
 import { useLocation } from "react-router-dom";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -25,12 +26,14 @@ const AnimatedRoutes = () => {
         exit={{ opacity: 0, scale: 1.05 }}
         transition={{ duration: 0.3, type: 'spring', damping: 20 }}
       >
-        <Routes location={location}>
-          <Route path="/" element={<ProfileForm />} />
-          <Route path="/matches" element={<Matches />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes location={location}>
+            <Route path="/" element={<ProfileForm />} />
+            <Route path="/matches" element={<Matches />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </motion.div>
     </AnimatePresence>
   );
