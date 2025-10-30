@@ -97,16 +97,23 @@ const Matches = () => {
       const endDt = new Date(startDt);
       endDt.setHours(endDt.getHours() + 1);
 
-      const { error } = await supabase.from('sessions').insert({
-        from_user_id: Number(myIdStr),
-        to_user_id: Number(targetId),
-        start_at: startDt.toISOString(),
-        end_at: endDt.toISOString(),
-        note: '',
-        status: 'pending',
+      const res = await fetch('/api/propose-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from_user_id: Number(myIdStr),
+          to_user_id: Number(targetId),
+          start_at: startDt.toISOString(),
+          end_at: endDt.toISOString(),
+          topic: 'Study Session',
+          message: ''
+        })
       });
-      if (error) throw error;
-      toast.success('Session proposed for next hour! Waiting for acceptance.');
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || 'Failed to propose');
+      }
+      toast.success('Session proposed! Email sent to recipient.');
     } catch (e: any) {
       console.log('Failed to propose session', e);
       toast.error(`Failed to propose session: ${e?.message || 'Unknown error'}`);
